@@ -34,9 +34,19 @@ var server = http.createServer(function(request, response){
         errors.password_confirmation = '两次输入密码不匹配'
       }
 
+      // 写数据库
+
       response.setHeader('Content-Type', 'text/html;charset=utf-8') 
-      response.end(JSON.stringify(errors))
+      response.end(JSON.stringify(errors)) // 运行在node.js
     })
+  }else if(path === '/node_modules/jquery/dist/jquery.min.js'){
+    let string = fs.readFileSync('./node_modules/jquery/dist/jquery.min.js')  
+    response.setHeader('Content-Type', 'application/javascript;charset=utf-8')  
+    response.end(string)   
+  }else if(path === '/main.js'){
+    let string = fs.readFileSync('./main.js')  
+    response.setHeader('Content-Type', 'application/javascript;charset=utf-8')  
+    response.end(string)   
   }else{  
     response.statusCode = 404
     response.setHeader('Content-Type', 'text/html;charset=utf-8') 
@@ -58,8 +68,8 @@ function getPostData(request, callback){
       let postData = {}
       for(var i=0; i<array.length; i++){
         let parts = array[i].split('=')
-        let key = parts[0]
-        let value = parts[1]
+        let key = decodeURIComponent(parts[0])
+        let value = decodeURIComponent(parts[1])
         postData[key] = value
       }
       callback.call(null, postData)
