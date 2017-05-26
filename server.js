@@ -18,14 +18,6 @@ var server = http.createServer(function(request, response){
     var string = fs.readFileSync('./index.html')  
     response.setHeader('Content-Type', 'text/html;charset=utf-8')  
     response.end(string)   
-  }else if(path === '/style.css'){   
-    var string = fs.readFileSync('./style.css')
-    response.setHeader('Content-Type', 'text/css')
-    response.end(string)
-  }else if(path === '/main.js'){  
-    var string = fs.readFileSync('./main.js')
-    response.setHeader('Content-Type', 'application/javascript')
-    response.end(string)
   }else{  
     response.statusCode = 404
     response.setHeader('Content-Type', 'text/html;charset=utf-8') 
