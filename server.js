@@ -18,6 +18,25 @@ var server = http.createServer(function(request, response){
     var string = fs.readFileSync('./index.html')  
     response.setHeader('Content-Type', 'text/html;charset=utf-8')  
     response.end(string)   
+  }else if(path === '/signUp' && method === 'POST'){
+    getPostData(request, function(postData){
+      let {email, password, password_confirmation} = postData
+      let errors = {}
+      // check email
+      if(email.indexOf('@') <= 0){
+        errors.email = '邮箱不合法'
+      }
+      if(password.length < 6){
+        errors.password = '密码太短'
+      }
+
+      if(password_confirmation !== password){
+        errors.password_confirmation = '两次输入密码不匹配'
+      }
+
+      response.setHeader('Content-Type', 'text/html;charset=utf-8') 
+      response.end(JSON.stringify(errors))
+    })
   }else{  
     response.statusCode = 404
     response.setHeader('Content-Type', 'text/html;charset=utf-8') 
@@ -27,6 +46,25 @@ var server = http.createServer(function(request, response){
   // 代码结束，下面不要看
   console.log(method + ' ' + request.url)
 })
+
+function getPostData(request, callback){
+    data = ''
+    request.on('data', (postData) => {
+      data += postData.toString()
+    })
+
+    request.on('end', () => {
+      let array = data.split('&')
+      let postData = {}
+      for(var i=0; i<array.length; i++){
+        let parts = array[i].split('=')
+        let key = parts[0]
+        let value = parts[1]
+        postData[key] = value
+      }
+      callback.call(null, postData)
+    })
+}
 
 server.listen(port)
 console.log('监听 ' + port + ' 成功，请用在空中转体720度然后用电饭煲打开 http://localhost:' + port)
