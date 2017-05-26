@@ -20,22 +20,23 @@ var server = http.createServer(function(request, response){
     response.end(string)   
   }else if(path === '/signUp' && method === 'POST'){
     getPostData(request, function(postData){
-      let {email, password, password_confirmation} = postData
-      let errors = {}
-      // check email
-      if(email.indexOf('@') <= 0){
-        errors.email = '邮箱不合法'
-      }
-      if(password.length < 6){
-        errors.password = '密码太短'
-      }
 
-      if(password_confirmation !== password){
-        errors.password_confirmation = '两次输入密码不匹配'
+      let errors = checkPostData(postData)
+      if(Object.keys(errors).length === 0){
+        let {email, password} = postData
+        let user = {
+          email: email,
+          passwordHash: frankHash(password) // 永远不要使用 MDN5，永远不要自己发明加密算法
+        }
+        // 写数据库
+        let dbString = fs.readFileSync('./db.json', 'utf-8')  
+        let dbObject = JSON.parse(dbString)
+        dbObject.users.push(user)
+        let dbString2 = JSON.stringify(dbObject)
+        fs.writeFileSync('./db.json',dbString2, {encoding: 'utf-8'})  
+      }else{
+        response.statusCode = 400
       }
-
-      // 写数据库
-
       response.setHeader('Content-Type', 'text/html;charset=utf-8') 
       response.end(JSON.stringify(errors)) // 运行在node.js
     })
@@ -47,6 +48,42 @@ var server = http.createServer(function(request, response){
     let string = fs.readFileSync('./main.js')  
     response.setHeader('Content-Type', 'application/javascript;charset=utf-8')  
     response.end(string)   
+  }else if(path === '/home'){
+    var cookies = parseCookies(request.headers.cookie);
+    response.setHeader('Content-Type', 'text/html;charset=utf-8')  
+    if(cookies.logined === 'true'){
+      response.end(`${cookies.user_id}已登录`)   
+    }else{
+      let string = fs.readFileSync('./home')  
+      response.end(string)   
+    }
+  }else if(path === '/login' && method === 'POST'){
+    // 读数据库
+    getPostData(request, (postData)=>{
+      let dbString = fs.readFileSync('./db.json', 'utf-8')  
+      let dbObject = JSON.parse(dbString)
+      let users = dbObject.users
+
+      let {email, password} = postData
+      let found 
+      for( var i=0; i< users.length; i++){
+        if(users[i].email === email && users[i].passwordHash === frankHash(password)){
+          found = users[i]
+          break
+        }
+      }
+      if(found){
+        // 标记该用户登录了 
+        response.setHeader('Set-Cookie', ['logined=true; expires=1000; path=/;', 'user_id='+email+'; expires=123456789; path=/;'])
+        response.end('')
+      }else{
+        response.statusCode = 400
+        let errors = {email: '没有注册或密码错误'} 
+        response.setHeader('Content-Type', 'text/html;charset=utf-8') 
+        response.end(JSON.stringify(errors))   
+      }
+
+    })
   }else{  
     response.statusCode = 404
     response.setHeader('Content-Type', 'text/html;charset=utf-8') 
@@ -74,6 +111,53 @@ function getPostData(request, callback){
       }
       callback.call(null, postData)
     })
+}
+
+function checkPostData(postData){
+  let {email, password, password_confirmation} = postData
+  let errors = {}
+  // check email
+  if(email.indexOf('@') <= 0){
+    errors.email = '邮箱不合法'
+  }
+  if(password.length < 6){
+    errors.password = '密码太短'
+  }
+
+  if(password_confirmation !== password){
+    errors.password_confirmation = '两次输入密码不匹配'
+  }
+
+  return errors
+}
+
+function frankHash(string){
+  return 'frank' + string + 'frank'
+}
+
+function parseCookies(cookie) { // JSON.parse
+  try{
+    return cookie.split(';').reduce(
+      function(prev, curr) {
+        var m = / *([^=]+)=(.*)/.exec(curr);
+        var key = m[1];
+        var value = decodeURIComponent(m[2]);
+        prev[key] = value;
+        return prev;
+      },
+      { }
+    );
+  }catch(error){
+    return {}
+  }
+}
+
+function stringifyCookies(cookies) { //JSON.stringify
+  var list = [ ];
+  for (var key in cookies) {
+    list.push(key + '=' + encodeURIComponent(cookies[key]));
+  }
+  return list.join('; ');
 }
 
 server.listen(port)
